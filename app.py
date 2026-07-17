@@ -1,42 +1,58 @@
 import streamlit as st
 
-st.set_page_config(page_title="Kalkulatori i Doganës", layout="wide")
+# Dizajni i përgjithshëm
+st.set_page_config(page_title="Kalkulatori Doganor", page_icon="📦", layout="centered")
 
-if "cmimi_str" not in st.session_state: st.session_state.cmimi_str = ""
-if "transporti_str" not in st.session_state: st.session_state.transporti_str = ""
-if "fusha_aktive" not in st.session_state: st.session_state.fusha_aktive = "cmimi"
+# CSS për të rregulluar pamjen (Stili modern)
+st.markdown("""
+    <style>
+    .main { background-color: #f5f7f9; }
+    div.stButton > button { width: 100%; border-radius: 10px; height: 3em; background-color: #007BFF; color: white; }
+    </style>
+    """, unsafe_allow_html=True)
 
-st.title("📦 Kalkulatori i Doganës dhe TVSH-së")
-st.write("Plotësoni të dhënat duke përdorur tastierën virtuale anash.")
+# Inicializimi i gjendjes
+if "c_str" not in st.session_state: st.session_state.c_str = ""
+if "t_str" not in st.session_state: st.session_state.t_str = ""
+if "fusha" not in st.session_state: st.session_state.fusha = "Çmimi"
 
-col_left, col_right = st.columns([2, 1])
+st.title("📦 Kalkulatori Doganor")
+st.markdown("---") # Vijë ndarëse për dizajn
 
-with col_left:
-    fusha = st.radio("Zgjidhni fushën për tastierën:", ("Çmimi i produktit", "Kosto e transportit"), horizontal=True)
-    st.session_state.fusha_aktive = "cmimi" if fusha == "Çmimi i produktit" else "transporti"
+# Pjesa e plotësimit
+col1, col2 = st.columns([1.5, 1])
+
+with col1:
+    st.subheader("📝 Të dhënat")
+    fusha = st.radio("Zgjidhni fushën për tastierën:", ("Çmimi", "Transporti"), horizontal=True)
+    st.session_state.fusha = fusha
     
-    val_c = float(st.session_state.cmimi_str) if st.session_state.cmimi_str else 0.0
-    val_t = float(st.session_state.transporti_str) if st.session_state.transporti_str else 0.0
-    
-    cmimi = st.number_input("Çmimi i produktit (€)", value=val_c, format="%.2f")
-    transporti = st.number_input("Kosto e transportit (€)", value=val_t, format="%.2f")
+    c = st.number_input("Çmimi i produktit (€)", value=float(st.session_state.c_str or 0.0), format="%.2f")
+    t = st.number_input("Kosto e transportit (€)", value=float(st.session_state.t_str or 0.0), format="%.2f")
     
     if st.button("Llogarit"):
-        total = (cmimi + transporti) * 1.21 # Shembull thjeshtuar
-        st.success(f"Gjithsej: {total:.2f} €")
+        dogana = (c + t) * 0.10
+        tvsh = (c + t + dogana) * 0.10
+        total = c + t + dogana + tvsh
+        
+        st.markdown("---")
+        st.subheader("📊 Rezultatet")
+        # Përdorimi i st.metric për dizajn profesional
+        st.metric("Gjithsej për t'u paguar", f"{total:.2f} €")
+        st.caption(f"Dogana: {dogana:.2f} € | TVSH: {tvsh:.2f} €")
 
-with col_right:
-    st.subheader("⌨️ Tastiera Virtuale")
-    def shto(k):
-        if st.session_state.fusha_aktive == "cmimi": st.session_state.cmimi_str += k
-        else: st.session_state.transporti_str += k
-    
-    c1, c2, c3 = st.columns(3)
-    if c1.button("1"): shto("1"); st.rerun()
-    if c2.button("2"): shto("2"); st.rerun()
-    if c3.button("3"): shto("3"); st.rerun()
-    # Shto pjesën tjetër të rreshtave këtu nëse dëshiron
-    if st.button("Pastro"): 
-        if st.session_state.fusha_aktive == "cmimi": st.session_state.cmimi_str = ""
-        else: st.session_state.transporti_str = ""
-        st.rerun()
+with col2:
+    st.subheader("⌨️ Tastiera")
+    # Logjika e butonave e njëjtë, por më kompakte
+    grid = [["1","2","3"], ["4","5","6"], ["7","8","9"], [".","0","⌫"]]
+    for row in grid:
+        cols = st.columns(3)
+        for i, val in enumerate(row):
+            if cols[i].button(val, key=f"btn_{val}"):
+                if val == "⌫":
+                    if st.session_state.fusha == "Çmimi": st.session_state.c_str = st.session_state.c_str[:-1]
+                    else: st.session_state.t_str = st.session_state.t_str[:-1]
+                else:
+                    if st.session_state.fusha == "Çmimi": st.session_state.c_str += val
+                    else: st.session_state.t_str += val
+                st.rerun()
