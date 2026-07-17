@@ -1,28 +1,30 @@
 import streamlit as st
 
-st.set_page_config(page_title="Kalkulatori i Importit", layout="centered")
-
 st.title("📦 Kalkulatori i Importit")
 
-with st.expander("Shto të dhënat e importit", expanded=True):
-    col1, col2 = st.columns(2)
-    with col1:
-        cmimi = st.number_input("Çmimi i produktit (€)", min_value=0.0, format="%.2f")
-    with col2:
-        transporti = st.number_input("Kosto e transportit (€)", min_value=0.0, format="%.2f")
+# Seksioni i Inputit
+col_left, col_right = st.columns([2, 1])
 
-if st.button("Llogarit Koston"):
-    vlerat_baze = cmimi + transporti
-    dogana = vlerat_baze * 0.10
-    tvsh = (vlerat_baze + dogana) * 0.10
-    kosto_finale = vlerat_baze + dogana + tvsh
-    
-    st.divider()
-    st.subheader("Rezultatet e Llogaritjes")
-    
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Dogana (10%)", f"{dogana:.2f} €")
-    c2.metric("TVSH (10%)", f"{tvsh:.2f} €")
-    c3.metric("Gjithsej", f"{kosto_finale:.2f} €")
-    
-    st.success(f"Kostoja përfundimtare: {kosto_finale:.2f} €")
+with col_left:
+    with st.expander("Shto të dhënat", expanded=True):
+        cmimi = st.number_input("Çmimi (€)", min_value=0.0, format="%.2f")
+        transporti = st.number_input("Transporti (€)", min_value=0.0, format="%.2f")
+        
+        if st.button("Llogarit"):
+            vlerat_baze = cmimi + transporti
+            dogana = vlerat_baze * 0.10
+            tvsh = (vlerat_baze + dogana) * 0.10
+            kosto_finale = vlerat_baze + dogana + tvsh
+            
+            st.divider()
+            st.metric("Gjithsej për t'u paguar", f"{kosto_finale:.2f} €")
+
+# Kalkulatori anash (Numpad për ata që s'kanë tastierë)
+with col_right:
+    st.write("⌨️ Përdor mausin:")
+    cols = st.columns(3)
+    # Këtu mund të shtosh butona për të ndihmuar futjen e të dhënave 
+    # ose thjesht për të bërë një pamje më teknike
+    if st.button("Pastro fushat"):
+        st.rerun()
+    st.info("Kliko fushat e sipërme për të shkruar.")
