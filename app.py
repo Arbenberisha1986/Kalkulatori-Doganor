@@ -4,9 +4,6 @@ import pandas as pd
 
 st.set_page_config(page_title="Kalkulatori Doganor", page_icon="📦", layout="centered")
 
-# ---------------------------------------------------------------------------
-# STIL (CSS)
-# ---------------------------------------------------------------------------
 st.markdown("""
     <style>
     .res-box {
@@ -29,27 +26,20 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
-# KONFIGURIMI I KATEGORIVE (dogana %, TVSH %)
-# Ndrysho ose shto kategori sipas nevojës.
-# ---------------------------------------------------------------------------
 KATEGORITE = {
-    "Standarde (10% / 10%)": {"dogana": 0.10, "tvsh": 0.10},
-    "Ushqim (0% / 10%)":     {"dogana": 0.00, "tvsh": 0.10},
-    "Elektronikë (5% / 10%)": {"dogana": 0.05, "tvsh": 0.10},
-    "Tekstil (10% / 10%)":   {"dogana": 0.10, "tvsh": 0.10},
-    "Personalizuar":         {"dogana": None, "tvsh": None},
+    "Standarde (Dogana 10% / TVSH 18%)":     {"dogana": 0.10, "tvsh": 0.18},
+    "Ushqim (Dogana 0% / TVSH 18%)":         {"dogana": 0.00, "tvsh": 0.18},
+    "Elektronikë (Dogana 5% / TVSH 18%)":    {"dogana": 0.05, "tvsh": 0.18},
+    "Tekstil (Dogana 10% / TVSH 18%)":       {"dogana": 0.10, "tvsh": 0.18},
+    "Personalizuar":                          {"dogana": None, "tvsh": None},
 }
 
-# ---------------------------------------------------------------------------
-# GJENDJA E SESIONIT (session_state)
-# ---------------------------------------------------------------------------
 defaults = {
-    "c_str": "",          # çmimi si tekst (për tastierën)
-    "t_str": "",           # transporti si tekst
-    "fusha": "Çmimi",       # fusha aktive e përzgjedhur
-    "rezultat": None,       # rezultati i fundit i llogaritur
-    "historiku": [],        # historiku i llogaritjeve
+    "c_str": "",
+    "t_str": "",
+    "fusha": "Çmimi",
+    "rezultat": None,
+    "historiku": [],
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -57,7 +47,6 @@ for key, val in defaults.items():
 
 
 def parse_input(s: str) -> float:
-    """Kthen tekstin në numër në mënyrë të sigurt (pa u rrëzuar)."""
     s = (s or "").strip().rstrip(".")
     if s in ("", "-", "."):
         return 0.0
@@ -68,23 +57,28 @@ def parse_input(s: str) -> float:
 
 
 def shto_shifer(fusha_key: str, val: str):
-    """Përditëson tekstin e fushës aktive, duke lejuar vetëm një pikë dhjetore."""
     current = st.session_state[fusha_key]
     if val == "⌫":
         st.session_state[fusha_key] = current[:-1]
     elif val == "." and "." in current:
-        return  # nuk lejohet më shumë se një pikë dhjetore
+        return
     else:
         st.session_state[fusha_key] = current + val
+
+
+def sanitize_tekst(fusha_key: str):
+    raw = st.session_state[fusha_key].replace(",", ".")
+    pastruar = "".join(ch for ch in raw if ch.isdigit() or ch == ".")
+    if pastruar.count(".") > 1:
+        pjesa_e_para, *pjesa_tjeter = pastruar.split(".")
+        pastruar = pjesa_e_para + "." + "".join(pjesa_tjeter)
+    st.session_state[fusha_key] = pastruar
 
 
 st.title("📦 Kalkulatori Doganor")
 
 col1, col2 = st.columns([1, 1])
 
-# ---------------------------------------------------------------------------
-# KOLONA E MAJTË: hyrjet dhe rezultati
-# ---------------------------------------------------------------------------
 with col1:
     kategoria = st.selectbox("Kategoria e mallit:", list(KATEGORITE.keys()))
     ratet = KATEGORITE[kategoria]
@@ -92,7 +86,7 @@ with col1:
     if ratet["dogana"] is None:
         c1, c2 = st.columns(2)
         rt_dogana = c1.number_input("Dogana (%)", min_value=0.0, max_value=100.0, value=10.0, step=0.5) / 100
-        rt_tvsh = c2.number_input("TVSH (%)", min_value=0.0, max_value=100.0, value=10.0, step=0.5) / 100
+        rt_tvsh = c2.number_input("TVSH (%)", min_value=0.0, max_value=100.0, value=18.0, step=0.5) / 100
     else:
         rt_dogana = ratet["dogana"]
         rt_tvsh = ratet["tvsh"]
@@ -101,19 +95,19 @@ with col1:
     fusha = st.radio("Zgjidh fushën për tastierë:", ("Çmimi", "Transporti"), horizontal=True)
     st.session_state.fusha = fusha
 
+    st.text_input(
+        "Çmimi (€)", key="c_str",
+        placeholder="0.00",
+        on_change=sanitize_tekst, args=("c_str",),
+    )
+    st.text_input(
+        "Transporti (€)", key="t_str",
+        placeholder="0.00",
+        on_change=sanitize_tekst, args=("t_str",),
+    )
+
     c = parse_input(st.session_state.c_str)
     t = parse_input(st.session_state.t_str)
-
-    st.markdown('<p class="field-label">Çmimi (€)</p>', unsafe_allow_html=True)
-    st.markdown(
-        f'<span class="{"active-field" if fusha=="Çmimi" else ""}" style="font-size:22px;">'
-        f'{st.session_state.c_str or "0"}</span>', unsafe_allow_html=True
-    )
-    st.markdown('<p class="field-label">Transporti (€)</p>', unsafe_allow_html=True)
-    st.markdown(
-        f'<span class="{"active-field" if fusha=="Transporti" else ""}" style="font-size:22px;">'
-        f'{st.session_state.t_str or "0"}</span>', unsafe_allow_html=True
-    )
 
     if st.button("🧮 Llogarit Tani", use_container_width=True, type="primary"):
         dogana = (c + t) * rt_dogana
@@ -149,9 +143,6 @@ with col1:
             </div>
         """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
-# KOLONA E DJATHTË: tastiera
-# ---------------------------------------------------------------------------
 with col2:
     st.subheader("⌨️ Tastiera")
     st.caption(f"Duke shkruar në: **{st.session_state.fusha}**")
@@ -172,9 +163,6 @@ with col2:
         st.session_state.rezultat = None
         st.rerun()
 
-# ---------------------------------------------------------------------------
-# HISTORIKU
-# ---------------------------------------------------------------------------
 if st.session_state.historiku:
     st.divider()
     st.subheader("📋 Historiku i Llogaritjeve")
